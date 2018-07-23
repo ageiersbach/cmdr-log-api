@@ -1,10 +1,11 @@
 //use std::collections::HashMap;
 use chrono::prelude::*;
 use serde_json::*;
+use std::io;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerJournalEvent {
-    event: String,
+    pub event: String,
     timestamp: String,
 
     #[serde(skip)]
@@ -12,10 +13,10 @@ pub struct PlayerJournalEvent {
 }
 
 impl PlayerJournalEvent {
-    pub fn new(s: String) -> PlayerJournalEvent {
+    pub fn new(s: String) -> Result<PlayerJournalEvent> {
         let mut pje: PlayerJournalEvent = from_str(&s).unwrap();
         pje.raw_json = s.clone();
-        pje
+        Ok(pje)
     }
 
     pub fn date(&self) -> Result<DateTime<Utc>> {
@@ -32,7 +33,7 @@ mod tests {
     #[test]
     fn player_journal_event_buy_drones_succeeds() {
         let test_drone = "{ \"timestamp\": \"2018-07-12T01:56:34Z\", \"event\": \"BuyDrones\", \"Type\": \"Drones\", \"Count\": 10, \"BuyPrice\": 101, \"TotalCost\": 1010 }";
-        let pje = PlayerJournalEvent::new(test_drone.clone().to_string());
+        let pje = PlayerJournalEvent::new(test_drone.clone().to_string()).unwrap();
         assert_eq!(pje.raw_json, test_drone.to_string());
         let json: Value = json!(pje);
         assert_eq!(json["timestamp"], "2018-07-12T01:56:34Z");
@@ -42,7 +43,7 @@ mod tests {
     #[test]
     fn player_journal_event_launch_drone_succeeds() {
         let test_drone = "{ \"timestamp\": \"2018-07-12T02:13:09Z\", \"event\": \"LaunchDrone\", \"Type\": \"Collection\" }";
-        let pje = PlayerJournalEvent::new(test_drone.to_string());
+        let pje = PlayerJournalEvent::new(test_drone.to_string()).unwrap();
         let json: Value = json!(pje);
         assert_eq!(json["timestamp"], "2018-07-12T02:13:09Z");
         assert_eq!(json["event"], "LaunchDrone");
@@ -51,7 +52,7 @@ mod tests {
     #[test]
     fn player_journal_event_date() {
         let test_drone = "{ \"timestamp\": \"2018-07-12T02:13:09Z\", \"event\": \"LaunchDrone\", \"Type\": \"Collection\" }";
-        let pje = PlayerJournalEvent::new(test_drone.to_string());
+        let pje = PlayerJournalEvent::new(test_drone.to_string()).unwrap();
         assert_eq!(pje.date().unwrap().year(), 2018);
         assert_eq!(pje.date().unwrap().month(), 7);
         assert_eq!(pje.date().unwrap().day(), 12);

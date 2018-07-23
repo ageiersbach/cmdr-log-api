@@ -1,24 +1,75 @@
 // use std::env;
 use std::fs::File;
-use std::io::{self, BufReader, Write};
-use std::io::prelude::*;
+use std::io::{self, BufReader, BufRead, Write};
+use std::fs;
+use chrono::prelude::*;
+use std::env;
+use std::ffi::OsStr;
 
 use super::events::PlayerJournalEvent;
 
-struct PlayerJournal {
+fn file_modified_today(entry: &fs::DirEntry) -> bool {
+  if let Ok(metadata) = entry.metadata() {
+      if let Ok(modified) = metadata.modified() {
+          let d: DateTime<Utc> = modified.into();
+          let today = Utc::now();
+          if (today - d).num_seconds() < 86400 {
+              return true
+          }
+      }
+
+  }
+  false
+}
+
+fn file_is_player_log(entry: &fs::DirEntry) -> bool {
+    println!("what is the path? {:?}", &entry.path());
+    if let Ok(_is_file) = &entry.file_type().and_then(|f| Ok(f.is_file())) {
+        if let Some(extension) = &entry.path().as_path().extension().and_then(OsStr::to_str) {
+            match *extension {
+                "log" => return true,
+                _ => return false
+            }
+        }
+        println!("what a drag");
+    }
+    false
+}
+
+pub fn todays_player_journal(filename: &str) -> Option<String> {
+    let entries = fs::read_dir(filename).unwrap();
+    for e in entries {
+        if let Ok(entry) = e {
+           println!("what is");
+           if file_modified_today(&entry) && file_is_player_log(&entry) {
+               //return &entry.path().to_str().and_then(|p| Some(p.to_string())) why doesn't this work???
+               if let Some(path_str) = &entry.path().to_str() {
+                   return Some(path_str.to_string());
+               }
+           }
+
+        }
+    }
+    None
+}
+
+#[derive(Debug)]
+pub struct PlayerJournal {
   path: String,
-  events: Vec<PlayerJournalEvent>,
+  pub events: Vec<PlayerJournalEvent>,
 }
 
 impl PlayerJournal {
-    fn read(path: &str) -> io::Result<PlayerJournal> {
+    pub fn read(path: &str) -> io::Result<PlayerJournal> {
         let f = File::open(&path)?;
         let f = BufReader::new(f);
         let mut player_events = Vec::new();
 
         for line in f.lines() {
-          let pje = PlayerJournalEvent::new(line.unwrap());
-          player_events.push(pje);
+          if let Ok(Ok(pje)) = line.and_then(|p| Ok(PlayerJournalEvent::new(p))) {
+              player_events.push(pje);
+
+          }
         }
 
         Ok(PlayerJournal {
