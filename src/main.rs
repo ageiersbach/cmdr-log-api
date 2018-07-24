@@ -8,6 +8,7 @@ pub extern crate chrono;
 
 pub mod events;
 pub mod journal;
+pub mod api;
 
 use chrono::prelude::*;
 use std::env;
@@ -17,11 +18,12 @@ fn main() {
     if let Some(path_name) = env::args().nth(1) {
         println!("here be the Path you gave {:?}", &path_name);
         if let Some(tpj) = todays_player_journal(&path_name) {
+            //let time_before_read = Utc::now();
+            let time_before_read = "2018-05-10T02:13:09Z".parse::<DateTime<Utc>>().expect("could not parse date");
+
             if let Ok(pj) = PlayerJournal::read(&tpj) {
-                match pj.events {
-                    _ => println!("ok, we matched all against one condition")
-                }
-                println!("What did we catch today? {:?}", pj);
+                pj.api_payload_from(&time_before_read).and_then(|api| Some(api.post()));
+                //println!("What did we catch today? {:?}", pj);
             }
         }
     } else {

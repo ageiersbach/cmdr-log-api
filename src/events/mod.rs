@@ -1,15 +1,26 @@
-//use std::collections::HashMap;
 use chrono::prelude::*;
 use serde_json::*;
 use std::io;
 
+pub mod limpets;
+pub mod missions;
+pub mod location;
+pub mod cargo;
+
+pub use self::limpets::*;
+pub use self::missions::*;
+pub use self::location::*;
+pub use self::cargo::*;
+use chrono::{DateTime, Utc};
+
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerJournalEvent {
     pub event: String,
-    timestamp: String,
+    pub timestamp: DateTime<Utc>,
 
     #[serde(skip)]
-    raw_json: String,
+    pub raw_json: String,
 }
 
 impl PlayerJournalEvent {
@@ -17,11 +28,6 @@ impl PlayerJournalEvent {
         let mut pje: PlayerJournalEvent = from_str(&s).unwrap();
         pje.raw_json = s.clone();
         Ok(pje)
-    }
-
-    pub fn date(&self) -> Result<DateTime<Utc>> {
-      let d: DateTime<Utc> = self.timestamp.parse().unwrap();
-      Ok(d)
     }
 }
 

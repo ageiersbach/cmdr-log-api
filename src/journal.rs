@@ -7,6 +7,7 @@ use std::env;
 use std::ffi::OsStr;
 
 use super::events::PlayerJournalEvent;
+use super::api::Payload;
 
 fn file_modified_today(entry: &fs::DirEntry) -> bool {
   if let Ok(metadata) = entry.metadata() {
@@ -56,7 +57,7 @@ pub fn todays_player_journal(filename: &str) -> Option<String> {
 #[derive(Debug)]
 pub struct PlayerJournal {
   path: String,
-  pub events: Vec<PlayerJournalEvent>,
+  events: Vec<PlayerJournalEvent>,
 }
 
 impl PlayerJournal {
@@ -76,7 +77,31 @@ impl PlayerJournal {
           path: path.to_string(),
           events: player_events
        })
-    }
+   }
+
+   pub fn api_payload_from(&self, date_time: &DateTime<Utc>) -> Option<Payload> {
+     let mut payload = Payload::new(&date_time);
+     for player_event in &self.events {
+         if &player_event.timestamp > &date_time {
+               let event_type = &player_event.event.as_str() as &str;
+               match event_type {
+                   "BuyDrones" => payload.buy_drones(&player_event),
+                   "LaunchDrone" => payload.launch_drone(),
+                   "MissionAccepted" => payload.add_mission(&player_event),
+                   "MissionAbandoned" | "MissionFailed" => payload.update_mission(&player_event),
+                   "Location" | "Docked" | "FSDJump" => payload.add_location(&player_event),
+                   "MarketSell" => payload.add_cargo(&player_event),
+                   "MiningRefined" => payload.add_single_cargo(&player_event),
+                   _ => ()
+               }
+         }
+
+     }
+     println!("What is my drone count after all {:?}", payload.limpet_count);
+     println!("what is my payload? {:?}", payload.post());
+     // Some(payload)
+     None
+   }
 }
 
 #[cfg(test)]
